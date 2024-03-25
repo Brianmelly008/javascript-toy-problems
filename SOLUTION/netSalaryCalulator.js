@@ -1,89 +1,140 @@
-function calculatePAYE(basicSalary) {
-    let tax = 0;
-    if (basicSalary <= 12298) {
-        tax = 0;
-    } else if (basicSalary <= 23885) {
-        tax = (basicSalary - 12298) * 0.1;
-    } else if (basicSalary <= 35472) {
-        tax = (11587 * 0.1) + ((basicSalary - 23885) * 0.15);
-    } else if (basicSalary <= 47059) {
-        tax = (11587 * 0.1) + (11587 * 0.15) + ((basicSalary - 35472) * 0.2);
-    } else if (basicSalary <= 59176) {
-        tax = (11587 * 0.1) + (11587 * 0.15) + (11587 * 0.2) + ((basicSalary - 47059) * 0.25);
-    } else {
-        tax = (11587 * 0.1) + (11587 * 0.15) + (11587 * 0.2) + (12117 * 0.25) + ((basicSalary - 59176) * 0.3);
+ //import module
+
+const readline = require('readline');
+
+//define tax rates functions
+function calculateTax(income){
+
+    //define our taxslabs on the bases of the tax rates
+    const taxSlabs= [
+        //Tax rate of 10% for income of upto 24k
+        {limit: 24000, rate: 0.1},
+
+         //Tax rate of 25% for income of upto 24k
+         {limit: 32333, rate:0.25},
+
+          //Tax rate of 30% for income of upto 24k
+          {limit:500000, rate: 0.3},
+
+           //Tax rate of 35% for income of upto 24k
+           {limit: 800000, rate: 0.35},
+
+    ];
+
+    //initialize our tax to zero
+    let tax =0;
+    //initialize remaining income to total income
+    let remainIncome = income;
+
+    //iterate theough each tax slab calculate the tax 
+    for (const slab of taxSlabs){
+        //check if there is any remaining income to be taxed
+        if(remainIncome <=0) break;
+        //calculate taxable amount within the current slab
+        const taxableAmount =Math.min(remainIncome, slab.limit);
+        //calculate the taxfor the taxable amount
+        tax+= taxableAmount *slab.rate;
+
+        //update 
+        remainIncome -= taxableAmount
     }
+
+    //return the total tax calculation
     return tax;
 }
 
-function calculateNHIF(basicSalary) {
-    let nhif = 0;
-    if (basicSalary < 6000) {
-        nhif = 150;
-    } else if (basicSalary <= 8000) {
-        nhif = 300;
-    } else if (basicSalary <= 12000) {
-        nhif = 400;
-    } else if (basicSalary <= 15000) {
-        nhif = 500;
-    } else if (basicSalary <= 20000) {
-        nhif = 600;
-    } else if (basicSalary <= 25000) {
-        nhif = 750;
-    } else if (basicSalary <= 30000) {
-        nhif = 850;
-    } else if (basicSalary <= 35000) {
-        nhif = 900;
-    } else if (basicSalary <= 40000) {
-        nhif = 950;
-    } else if (basicSalary <= 45000) {
-        nhif = 1000;
-    } else if (basicSalary <= 50000) {
-        nhif = 1100;
-    } else if (basicSalary <= 60000) {
-        nhif = 1200;
-    } else if (basicSalary <= 70000) {
-        nhif = 1300;
-    } else if (basicSalary <= 80000) {
-        nhif = 1400;
-    } else if (basicSalary <= 90000) {
-        nhif = 1500;
-    } else if (basicSalary <= 100000) {
-        nhif = 1600;
-    } else {
-        nhif = 1700;
+//define NHIF rates
+function calculateNHIFDeductions(grossPay){
+    const nhifRates = [
+        {limit:5999, deduction: 150},
+        {limit:11999, deduction: 400},
+        {limit:29999, deduction: 850},
+        {limit:100000, deduction: 1700},
+
+    ];
+    for (const rate of nhifRates){
+        if (grossPay<= rate.limit){
+            return rate.deduction;
+        }
     }
-    return nhif;
+    //exceed the highest limit
+   return nhifRates[nhifRates.length - 1].deduction;
+
 }
 
-function calculateNSSF(basicSalary) {
-    const nssfRate = 0.06;
-    return basicSalary * nssfRate;
+
+//define nssf rates 
+function calculateNSSFContributions(pensionalPay){
+    //employee contribution rate for tier 1
+    const tierIRate = 0.06;
+    //lowerlimit foe tier II
+    const tierIILowestLimit = 7001; 
+
+if(pensionalPay <= tierIILowestLimit){
+    //is it within? calc contr based on tier 1 rate
+    return pensionalPay * tierIRate;
+} else {
+    //if it exceeds
+    return tierIILowestLimit * tierIRate;
+}
 }
 
-function calculateGrossSalary(basicSalary, benefits) {
-    return basicSalary + benefits;
+//calc our net salary
+function calculateNetSalary(basicSalary, benefits){
+    //calc gross salary>>> adding basic salary and benefits
+    const grossSalary = basicSalary + benefits;
+    //calc tax 
+    const tax = calculateTax(grossSalary);
+    //calc NHIF decuctions based on grosssalary
+    const NHIFDeductions = calculateNHIFDeductions(grossSalary);
+    //calc NSSF ded based on basic
+    const NSSFDeductions = calculateNSSFContributions(basicSalary);
+    //net salary>> sub tax,nhif ded, & nssf ded from gross salary
+    const netSalary = grossSalary - tax - NHIFDeductions - NSSFDeductions;
+
+    //results
+    return{
+        grossSalary,
+        tax,
+        NHIFDeductions,
+        NSSFDeductions,
+        netSalary
+    };
 }
 
-function calculateNetSalary(grossSalary, paye, nhif, nssf) {
-    return grossSalary - paye - nhif - nssf;
+//function to get the user input
+function getUserInput(question){
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+
+    });
+ 
+ return new Promise((resolve) => {
+    rl.question(question, (answer) =>{
+        rl.close();
+        resolve(parseFloat(answer));
+    });
+ });
 }
+ //function to run the program
+ async function run(){
+    //get user input for basic salary
 
-function main() {
-    const basicSalary = parseFloat(prompt("Enter the basic salary:"));
-    const benefits = parseFloat(prompt("Enter the benefits:"));
+    const basicSalary = await getUserInput("your basic salary = ");
 
-    const paye = calculatePAYE(basicSalary);
-    const nhif = calculateNHIF(basicSalary);
-    const nssf = calculateNSSF(basicSalary);
-    const grossSalary = calculateGrossSalary(basicSalary, benefits);
-    const netSalary = calculateNetSalary(grossSalary, paye, nhif, nssf);
+    //get user benefits 
+    const benefits = await getUserInput("Your Benefits = ");
 
-    console.log("PAYE (Tax):", paye);
-    console.log("NHIF Deductions:", nhif);
-    console.log("NSSF Deductions:", nssf);
-    console.log("Gross Salary:", grossSalary);
-    console.log("Net Salary:", netSalary);
-}
+    //calc net salary in response to user input
+    const salaryDetails = calculateNetSalary(basicSalary, benefits);
 
-main();
+    //display the calc
+    console.log("Gross = ", salaryDetails.grossSalary);
+    console.log("Tax = ", salaryDetails.tax);
+    console.log("NHIF Ded = ", salaryDetails.NHIFDeductions);
+    console.log("NSSF Ded = ", salaryDetails.NSSFDeductions);
+    console.log("Net = ", salaryDetails.netSalary);
+ }
+
+ run();
